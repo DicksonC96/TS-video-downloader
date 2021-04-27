@@ -1,0 +1,1 @@
+copy /b *.ts joined_files.ts
