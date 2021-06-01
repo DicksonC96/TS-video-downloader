@@ -88,10 +88,12 @@ def check_cores(core):
 def section_line():
     print('\n=============================================\n')
 
-url = sys.argv[1] #"https://abcd.voxzer.org/stream/5fa56f253fac5933e1e4b589/1080/index"
-#filename = "test"
+def main():
+    global url
+    url = sys.argv[1] #"https://abcd.voxzer.org/stream/5fa56f253fac5933e1e4b589/1080/index"
+    #filename = sys.argv[2]
 #core = 4
-
+main()
 
 if __name__ == "__main__":
     section_line()
@@ -104,10 +106,8 @@ if __name__ == "__main__":
         while not check_file_connection(url):
             url = input('Invalid URL. Please check your URL again: ')
         '''
-        if sys.argv[2]==None:
-            filename = input('Enter your filename (without format name eg. .mp4): ')
-        if not sys.argv[3]:
-            input_core = input('Enter the number of cores for the process (You have '+str(os.cpu_count())+' total cores; the higher the faster!): ')
+        filename = input('Enter your filename (without format name eg. .mp4): ')
+        input_core = input('Enter the number of cores for the process (You have '+str(os.cpu_count())+' total cores; the higher the faster!): ')
         core = check_cores(input_core)
         section_line()
         launch_run = input('   Video to be downloaded: '+filename+'.mp4\n   URL: '+url+'[index].ts\n   Total cores to be used: '+str(core)+'\n\n   Continue? [y/N]... ')
@@ -116,7 +116,7 @@ if __name__ == "__main__":
 
     section_line()
     print('Checking iteration limits at '+url+'[index].ts\'... ', flush=True)
-    end = check_iteration_limit(url)
+    end = 1 #check_iteration_limit(url)
     print('\nDownloading TS Video \''+filename+'\' from \''+url+'[index].ts\'... ', flush=True)
     create_tempdir(filename)
     pool = Pool(int(core))
