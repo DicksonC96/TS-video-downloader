@@ -5,12 +5,10 @@ from multiprocessing import Pool
 import time
 import os
 import shutil
-import numpy as np
 from requests.models import MissingSchema
 import tqdm
-from itertools import product
 import argparse
-import copy
+import datetime
 
 def downloader(iter):
     #print("Downloading "+str(f'{(pointer/end*100):04d}')+"% ("+str(pointer)+"/"+str(end)+")... ", end='\r', flush=True)
@@ -30,7 +28,7 @@ def mp4converter(iter):
 
 def mp4merger(end):
     with open('files.txt', 'w') as files:
-        for i in tqdm.tqdm(range(end), total=end, ncols=100):
+        for i in tqdm.tqdm(range(end), total=end, ncols=75):
             files.write('file \''+str(f'{i:04n}')+'.mp4\'\n')
     subprocess.call('ffmpeg -f concat -safe 0 -i files.txt -c copy ../'+filename+'.mp4'+' -hide_banner -loglevel warning')
 
@@ -47,23 +45,19 @@ def remove_tempdir():
     shutil.rmtree(temp_path)
 
 def check_iteration_limit(url):
-    start = 0
-    stop = 10000
-    step = 1000
-    while step >= 1:
-        print('Testing range between '+str(start)+' and '+str(stop)+' ... ', end='\r', flush=True)
-        points = np.linspace(start, stop, num=11)
-        for pt in points:
-            req = requests.get(url+'index'+str(int(pt))+'.ts', stream=True)
-            bitsize = len(req.content)
-            req.close()
-            if bitsize < 179:
-                stop = int(pt)
-                start = int(stop - step)
-                step = step/10
-                break
-    print(str(stop)+' files to be downloaded.                     ', flush=True)
-    return stop
+    low = 0
+    high = 20000
+    while high-low > 1:
+        print('   Testing range between '+str(low)+' and '+str(high)+' ... ', end='\r', flush=True)
+        num = round((high+low)/2)
+        req = requests.get(url+'index'+str(num)+'.ts', stream=True)
+        if len(req.content) < 179:
+            high = num
+        else:
+            low = num
+        req.close()
+    print(str(high)+' files to be downloaded.                     ', flush=True)
+    return high
 
 def check_file_connection(url):
     try:
@@ -127,11 +121,11 @@ def input_gui(url, filename=None, core=None):
         core = check_cores(core)
         print('All checks passed.')
         section_line()
-        launch_run = input('Video to be downloaded: \"'+filename+'.mp4\"\nURL: \"'+url+'[index].ts/\"\nTotal core processor(s) to be used: '+str(core)+'\nFile location: '+os.getcwd()+'\\ (current directory)\n\n   Continue? [y/N]... ')
+        launch_run = input('Filename: \"'+filename+'.mp4\"\nURL: \"'+url+'[index].ts/\"\nTotal core processor(s): '+str(core)+'\nSave to (current directory): '+os.getcwd()+'\\\n\n   Continue? [y/N]... ')
         if launch_run.lower() == 'n':
             filename = core = None
             section_line()
-            print('Change the parameters as followed or press \"CTRL+C\" to exit.')
+            print('Change the parameters as followed or press \"CTRL+C\" to abort.')
         while launch_run.lower() not in ['y', 'n']:
             launch_run = input('   Continue? Please enter [y/N]... ')
     return filename, core
@@ -153,23 +147,29 @@ url = 'https://abcd.voxzer.org/stream/5fa56f253fac5933e1e4b589/1080/index'
 filename = 'test1'
 core = 4
 '''
+
+## Cleanup file prior keyboard interrupt
+
 if __name__ == "__main__":
     filename, core = input_gui(url, filename, core)
+    start_time = time.time()
     section_line()
+    print('Download begins with '+core+' core processor(s). Sit back and relax!\nNote: Press \"CTRL+C\" to abort anytime.\n')
     print('Checking iteration limits at \"'+url+'index[number].ts\"... ', flush=True)
     end = check_iteration_limit(url)
     print('\nDownloading TS Video \"'+filename+'\" from \"'+url+'index[number].ts\"... ', flush=True)
     create_tempdir()
     pool = Pool(int(core))
-    list(tqdm.tqdm(pool.imap_unordered(downloader, range(end)), total=end, ncols=100, position=0, leave=True))
+    list(tqdm.tqdm(pool.imap_unordered(downloader, range(end)), total=end, ncols=75, position=0, leave=True))
     print('\nFormatting .ts files into .mp4... ', flush=True)
-    list(tqdm.tqdm(pool.imap_unordered(mp4converter, range(end)), total=end, ncols=100, position=0, leave=True))
+    list(tqdm.tqdm(pool.imap_unordered(mp4converter, range(end)), total=end, ncols=75, position=0, leave=True))
     print('\nMerging .mp4 chunks into \"'+filename+'.mp4\" ... ', flush=True)
     mp4merger(end)
     pool.close()
     pool.join()
     remove_tempdir()
-    print('\nDownload done! \"'+filename+'.mp4\" saved to '+os.getcwd()+'\\\nEnjoy the video!\n')
+    end_time = time.strftime('%H hours %M minutes %S seconds', time.gmtime(time.time()-start_time))
+    print('\nDownload done!\nFile saved to \"'+os.getcwd()+'\\'+filename+'.mp4\"'+'\nTime elapsed: '+str(end_time)+'\nEnjoy the video!\n')
     '''
     multiproc = time.time() - v
     sys.stdout.write('map: '+str(map_time)+'\n imap: '+str(multiproc))
